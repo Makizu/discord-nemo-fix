@@ -36,7 +36,7 @@ check_status() {
     local issues=()
 
     # Check XDG Portal config
-    if [ ! -f ~/.config/xdg-desktop-portal/portals.conf ]; then
+    if [ ! -f ~/.config/xdg-desktop-portal/hyprland-portals.conf ] && [ ! -f ~/.config/xdg-desktop-portal/portals.conf ]; then
         status="⚠️"
         issues+=("XDG Portal not configured")
     fi
@@ -64,10 +64,40 @@ check_status() {
     fi
 }
 
+# Backup existing files
+create_backups() {
+    local timestamp=$(date +%s)
+
+    # Backup portal configs
+    [ -f ~/.config/xdg-desktop-portal/hyprland-portals.conf ] && \
+        cp ~/.config/xdg-desktop-portal/hyprland-portals.conf ~/.config/xdg-desktop-portal/hyprland-portals.conf.backup.$timestamp
+
+    [ -f ~/.config/xdg-desktop-portal/portals.conf ] && \
+        cp ~/.config/xdg-desktop-portal/portals.conf ~/.config/xdg-desktop-portal/portals.conf.backup.$timestamp
+
+    # Backup GTK settings
+    [ -f ~/.config/gtk-3.0/settings.ini ] && \
+        cp ~/.config/gtk-3.0/settings.ini ~/.config/gtk-3.0/settings.ini.backup.$timestamp
+
+    # Backup wrapper if exists
+    [ -f ~/.local/bin/nautilus ] && \
+        cp ~/.local/bin/nautilus ~/.local/bin/nautilus.backup.$timestamp
+
+    echo "✅ Backups created"
+}
+
 # Configure XDG Desktop Portal
 configure_portal() {
     mkdir -p ~/.config/xdg-desktop-portal
 
+    # Create/update hyprland-portals.conf (Hyprland-specific)
+    cat > ~/.config/xdg-desktop-portal/hyprland-portals.conf << 'EOF'
+[preferred]
+default = hyprland;gtk
+org.freedesktop.impl.portal.FileChooser = gtk
+EOF
+
+    # Also create portals.conf for compatibility
     cat > ~/.config/xdg-desktop-portal/portals.conf << 'EOF'
 [preferred]
 default=gtk
@@ -146,6 +176,9 @@ install_fix() {
     gum style --foreground="#00D4AA" --bold "Installing Nemo File Picker Fix..."
     echo ""
 
+    gum spin --spinner="dot" --title="Creating backups..." -- sleep 1
+    create_backups
+
     gum spin --spinner="dot" --title="Configuring XDG Portal..." -- sleep 1
     configure_portal
 
@@ -167,21 +200,89 @@ install_fix() {
     echo ""
 }
 
+# Restore from backups
+restore_backups() {
+    local restored=false
+
+    # Find most recent backups
+    local portal_backup=$(ls ~/.config/xdg-desktop-portal/hyprland-portals.conf.backup.* 2>/dev/null | sort -V | tail -1)
+    local portals_backup=$(ls ~/.config/xdg-desktop-portal/portals.conf.backup.* 2>/dev/null | sort -V | tail -1)
+    local gtk_backup=$(ls ~/.config/gtk-3.0/settings.ini.backup.* 2>/dev/null | sort -V | tail -1)
+    local wrapper_backup=$(ls ~/.local/bin/nautilus.backup.* 2>/dev/null | sort -V | tail -1)
+
+    # Restore backups if they exist
+    if [ -n "$portal_backup" ]; then
+        cp "$portal_backup" ~/.config/xdg-desktop-portal/hyprland-portals.conf
+        echo "✅ Restored hyprland-portals.conf"
+        restored=true
+    fi
+
+    if [ -n "$portals_backup" ]; then
+        cp "$portals_backup" ~/.config/xdg-desktop-portal/portals.conf
+        echo "✅ Restored portals.conf"
+        restored=true
+    fi
+
+    if [ -n "$gtk_backup" ]; then
+        cp "$gtk_backup" ~/.config/gtk-3.0/settings.ini
+        echo "✅ Restored GTK settings"
+        restored=true
+    fi
+
+    if [ -n "$wrapper_backup" ]; then
+        cp "$wrapper_backup" ~/.local/bin/nautilus
+        echo "✅ Restored original wrapper"
+        restored=true
+    fi
+
+    if [ "$restored" = false ]; then
+        echo "ℹ️ No backups found to restore"
+    fi
+}
+
 # Uninstall fix
 uninstall_fix() {
     gum style --foreground="#FF6B6B" --bold "Uninstalling Nemo File Picker Fix..."
     echo ""
 
-    # Remove files
-    [ -f ~/.config/xdg-desktop-portal/portals.conf ] && rm ~/.config/xdg-desktop-portal/portals.conf
-    [ -f ~/.local/bin/nautilus ] && rm ~/.local/bin/nautilus
-    [ -f ~/.config/environment.d/nemo-fix.conf ] && rm ~/.config/environment.d/nemo-fix.conf
+    # First try to restore from backups
+    restore_backups
 
-    # Reset GTK to default
-    if [ -f ~/.config/gtk-3.0/settings.ini ]; then
-        sed -i '/gtk-file-chooser-backend/d' ~/.config/gtk-3.0/settings.ini
+    # Remove our files if no backups were restored
+    if [ -f ~/.config/xdg-desktop-portal/portals.conf ]; then
+        if ! ls ~/.config/xdg-desktop-portal/portals.conf.backup.* >/dev/null 2>&1; then
+            rm ~/.config/xdg-desktop-portal/portals.conf
+            echo "✅ Removed portals.conf"
+        fi
     fi
 
+    if [ -f ~/.config/xdg-desktop-portal/hyprland-portals.conf ]; then
+        if ! ls ~/.config/xdg-desktop-portal/hyprland-portals.conf.backup.* >/dev/null 2>&1; then
+            rm ~/.config/xdg-desktop-portal/hyprland-portals.conf
+            echo "✅ Removed hyprland-portals.conf"
+        fi
+    fi
+
+    # Remove wrapper if no backup was restored
+    if [ -f ~/.local/bin/nautilus ]; then
+        if ! ls ~/.local/bin/nautilus.backup.* >/dev/null 2>&1; then
+            rm ~/.local/bin/nautilus
+            echo "✅ Removed wrapper script"
+        fi
+    fi
+
+    # Remove environment config
+    [ -f ~/.config/environment.d/nemo-fix.conf ] && rm ~/.config/environment.d/nemo-fix.conf && echo "✅ Removed environment config"
+
+    # Clean GTK settings only if no backup was restored
+    if [ -f ~/.config/gtk-3.0/settings.ini ]; then
+        if ! ls ~/.config/gtk-3.0/settings.ini.backup.* >/dev/null 2>&1; then
+            sed -i '/gtk-file-chooser-backend/d' ~/.config/gtk-3.0/settings.ini
+            echo "✅ Cleaned GTK settings"
+        fi
+    fi
+
+    echo ""
     echo "✅ Uninstallation complete"
     echo ""
     echo "Note: PATH modifications in shell configs were not removed"
@@ -240,7 +341,13 @@ main_menu() {
 
                 echo ""
                 echo "Configuration:"
-                [ -f ~/.config/xdg-desktop-portal/portals.conf ] && echo "✅ Portal configured" || echo "❌ Portal not configured"
+                if [ -f ~/.config/xdg-desktop-portal/hyprland-portals.conf ] || [ -f ~/.config/xdg-desktop-portal/portals.conf ]; then
+                    echo "✅ Portal configured"
+                    [ -f ~/.config/xdg-desktop-portal/hyprland-portals.conf ] && echo "  • hyprland-portals.conf found"
+                    [ -f ~/.config/xdg-desktop-portal/portals.conf ] && echo "  • portals.conf found"
+                else
+                    echo "❌ Portal not configured"
+                fi
                 [ -f ~/.config/gtk-3.0/settings.ini ] && echo "✅ GTK settings exist" || echo "❌ GTK settings missing"
                 [ -f ~/.local/bin/nautilus ] && echo "✅ Wrapper installed" || echo "❌ Wrapper missing"
 

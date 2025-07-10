@@ -43,7 +43,16 @@ chmod +x nemo-fix.sh
 ## How It Works
 
 ### XDG Portal Configuration
-Creates `~/.config/xdg-desktop-portal/portals.conf`:
+Creates both portal configuration files for maximum compatibility:
+
+`~/.config/xdg-desktop-portal/hyprland-portals.conf`:
+```ini
+[preferred]
+default = hyprland;gtk
+org.freedesktop.impl.portal.FileChooser = gtk
+```
+
+`~/.config/xdg-desktop-portal/portals.conf`:
 ```ini
 [preferred]
 default=gtk
@@ -81,11 +90,22 @@ After installation:
 
 ## Files Modified
 
-- `~/.config/xdg-desktop-portal/portals.conf`
+- `~/.config/xdg-desktop-portal/hyprland-portals.conf` (Hyprland-specific)
+- `~/.config/xdg-desktop-portal/portals.conf` (compatibility)
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.local/bin/nautilus`
 - `~/.config/environment.d/nemo-fix.conf`
 - `~/.bashrc` and `~/.zshrc` (PATH only)
+
+## Backup & Restore
+
+The script automatically creates timestamped backups of all modified files before making changes:
+- `hyprland-portals.conf.backup.TIMESTAMP`
+- `portals.conf.backup.TIMESTAMP`
+- `settings.ini.backup.TIMESTAMP`
+- `nautilus.backup.TIMESTAMP`
+
+During uninstallation, original files are restored from backups when available.
 
 ## Troubleshooting
 
@@ -104,7 +124,13 @@ After installation:
 
 ## Uninstall
 
-Use the CLI uninstall option or manually remove:
+The CLI uninstall option intelligently:
+1. **Restores original files** from automatic backups when available
+2. **Removes created files** only if no backups exist
+3. **Preserves user data** and configurations
+
+Manual removal (if needed):
+- `~/.config/xdg-desktop-portal/hyprland-portals.conf`
 - `~/.config/xdg-desktop-portal/portals.conf`
 - `~/.local/bin/nautilus`
 - `~/.config/environment.d/nemo-fix.conf`
