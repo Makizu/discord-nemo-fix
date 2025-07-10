@@ -1,12 +1,12 @@
 #!/bin/bash
-# Discord Nemo File Picker Fix for Hyprland
-# Version: 1.0
-# Description: Redirects Discord's file picker from Nautilus to Nemo
+# Discord/Vesktop Nemo File Picker Fix for Linux
+# Version: 1.1
+# Description: Redirects Discord and Vesktop file picker from Nautilus to Nemo
 
 set -e
 
-SCRIPT_NAME="Discord Nemo File Picker Fix"
-VERSION="1.0"
+SCRIPT_NAME="Discord/Vesktop Nemo File Picker Fix"
+VERSION="1.1"
 
 # Colors for output
 RED='\033[0;31m'
@@ -38,7 +38,7 @@ show_help() {
 $SCRIPT_NAME v$VERSION
 
 DESCRIPTION:
-    Fixes Discord file picker to use Nemo instead of Nautilus on Hyprland.
+    Fixes Discord and Vesktop file picker to use Nemo instead of Nautilus on Linux.
     Creates a wrapper script that intercepts nautilus calls and redirects them to nemo.
 
 USAGE:
@@ -56,10 +56,11 @@ WHAT THIS SCRIPT MODIFIES:
     - Modifies: ~/.zshrc (adds PATH configuration, if exists)
     - Creates: ~/.config/environment.d/nemo-fix.conf
     - Creates: ~/.local/share/applications/discord-nemo.desktop
+    - Creates: ~/.local/share/applications/vesktop-nemo.desktop
 
 REQUIREMENTS:
     - Nemo file manager must be installed
-    - Discord must be installed
+    - Discord and/or Vesktop should be installed
 
 EOF
 }
@@ -77,9 +78,22 @@ check_dependencies() {
         exit 1
     fi
 
-    if ! command -v discord >/dev/null 2>&1; then
-        warn "Discord not found in PATH"
-        warn "Make sure Discord is installed before using this fix"
+    local discord_found=false
+    local vesktop_found=false
+
+    if command -v discord >/dev/null 2>&1; then
+        discord_found=true
+        log "Discord found"
+    fi
+
+    if command -v vesktop >/dev/null 2>&1; then
+        vesktop_found=true
+        log "Vesktop found"
+    fi
+
+    if [ "$discord_found" = false ] && [ "$vesktop_found" = false ]; then
+        warn "Neither Discord nor Vesktop found in PATH"
+        warn "Make sure at least one is installed before using this fix"
     fi
 
     success "Dependencies check passed"
@@ -178,13 +192,15 @@ EOF
     log "Created environment configuration at ~/.config/environment.d/nemo-fix.conf"
 }
 
-# Create Discord launcher
-create_discord_launcher() {
-    log "Creating Discord launcher with Nemo integration..."
+# Create application launchers
+create_app_launchers() {
+    log "Creating application launchers with Nemo integration..."
 
     mkdir -p ~/.local/share/applications
 
-    cat > ~/.local/share/applications/discord-nemo.desktop << EOF
+    # Create Discord launcher if Discord is installed
+    if command -v discord >/dev/null 2>&1; then
+        cat > ~/.local/share/applications/discord-nemo.desktop << EOF
 [Desktop Entry]
 Name=Discord (Nemo)
 StartupWMClass=discord
@@ -196,6 +212,25 @@ Type=Application
 Categories=Network;InstantMessaging;
 Keywords=chat;voice;video;game;gaming;
 EOF
+        log "Created Discord launcher"
+    fi
+
+    # Create Vesktop launcher if Vesktop is installed
+    if command -v vesktop >/dev/null 2>&1; then
+        cat > ~/.local/share/applications/vesktop-nemo.desktop << EOF
+[Desktop Entry]
+Name=Vesktop (Nemo)
+StartupWMClass=vesktop
+Comment=Vesktop with Nemo file picker integration
+GenericName=Internet Messenger
+Exec=env PATH="$HOME/.local/bin:\$PATH" vesktop
+Icon=vesktop
+Type=Application
+Categories=Network;InstantMessaging;
+Keywords=chat;voice;video;game;gaming;discord;
+EOF
+        log "Created Vesktop launcher"
+    fi
 
     # Update desktop database
     if command -v update-desktop-database >/dev/null 2>&1; then
@@ -203,7 +238,7 @@ EOF
         log "Updated desktop application database"
     fi
 
-    success "Created Discord launcher at ~/.local/share/applications/discord-nemo.desktop"
+    success "Created application launchers with Nemo integration"
 }
 
 # Verify installation
@@ -245,10 +280,15 @@ uninstall() {
         log "Removed wrapper script"
     fi
 
-    # Remove Discord launcher
+    # Remove application launchers
     if [ -f ~/.local/share/applications/discord-nemo.desktop ]; then
         rm ~/.local/share/applications/discord-nemo.desktop
         log "Removed Discord launcher"
+    fi
+
+    if [ -f ~/.local/share/applications/vesktop-nemo.desktop ]; then
+        rm ~/.local/share/applications/vesktop-nemo.desktop
+        log "Removed Vesktop launcher"
     fi
 
     # Remove environment config
@@ -277,7 +317,7 @@ install() {
     backup_files
     create_wrapper
     configure_path
-    create_discord_launcher
+    create_app_launchers
     verify_installation
 
     echo ""
@@ -285,8 +325,8 @@ install() {
     success "Installation completed successfully!"
     echo ""
     echo "NEXT STEPS:"
-    echo "1. Close Discord completely (kill all processes)"
-    echo "2. Launch 'Discord (Nemo)' from your application launcher"
+    echo "1. Close Discord/Vesktop completely (kill all processes)"
+    echo "2. Launch 'Discord (Nemo)' or 'Vesktop (Nemo)' from your application launcher"
     echo "3. Alternatively, restart your session for global effect"
     echo ""
     echo "VERIFICATION:"
@@ -295,7 +335,7 @@ install() {
     echo ""
     echo "TROUBLESHOOTING:"
     echo "- If not working immediately, restart your session"
-    echo "- Use the 'Discord (Nemo)' launcher specifically"
+    echo "- Use the 'Discord (Nemo)' or 'Vesktop (Nemo)' launcher specifically"
     echo "- Check PATH includes ~/.local/bin with: echo \$PATH"
     echo ""
     echo "To uninstall: $0 --uninstall"
@@ -343,7 +383,8 @@ if [ "$DRY_RUN" = true ]; then
     echo "- ~/.bashrc (add PATH configuration)"
     echo "- ~/.zshrc (add PATH configuration, if exists)"
     echo "- ~/.config/environment.d/nemo-fix.conf"
-    echo "- ~/.local/share/applications/discord-nemo.desktop"
+    echo "- ~/.local/share/applications/discord-nemo.desktop (if Discord installed)"
+    echo "- ~/.local/share/applications/vesktop-nemo.desktop (if Vesktop installed)"
     echo ""
     echo "BACKUPS TO CREATE:"
     echo "- ~/.local/bin/nautilus.backup.TIMESTAMP (if exists)"

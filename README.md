@@ -1,10 +1,10 @@
-# Discord Nemo File Picker Fix
+# Discord/Vesktop Nemo File Picker Fix
 
-Makes Discord use Nemo instead of Nautilus as file picker on Linux.
+Makes Discord and Vesktop use Nemo instead of Nautilus as file picker on Linux.
 
 ## Problem
 
-Discord ignores system file manager settings and always uses Nautilus, even when Nemo is set as default.
+Discord and Vesktop ignore system file manager settings and always use Nautilus, even when Nemo is set as default.
 
 ## Solution
 
@@ -13,7 +13,7 @@ Creates a wrapper script that intercepts `nautilus` calls and redirects them to 
 ## Requirements
 
 - Nemo file manager
-- Discord
+- Discord and/or Vesktop
 
 ## Installation
 
@@ -30,8 +30,8 @@ Preview changes first (optional):
 ## Usage
 
 After installation:
-1. Close Discord completely
-2. Launch "Discord (Nemo)" from your app launcher
+1. Close Discord/Vesktop completely
+2. Launch "Discord (Nemo)" or "Vesktop (Nemo)" from your app launcher
 3. Or restart your session
 
 ## Verification
@@ -51,11 +51,11 @@ nautilus --version  # Should show: nemo version
 
 - Creates `~/.local/bin/nautilus` wrapper script
 - Adds `~/.local/bin` to PATH
-- Creates Discord launcher with correct PATH
+- Creates Discord and/or Vesktop launchers with correct PATH
 - Makes backups of modified files
 
 ## Troubleshooting
 
-- Make sure Discord is completely closed before testing
-- Use the "Discord (Nemo)" launcher specifically
+- Make sure Discord/Vesktop is completely closed before testing
+- Use the "Discord (Nemo)" or "Vesktop (Nemo)" launcher specifically
 - Restart your session if needed
